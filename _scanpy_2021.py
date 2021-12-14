@@ -17,8 +17,13 @@ import numpy as np
 import seaborn as sb
 import math
 import scanpy.external as sce
+import scrublet as scr
+
 sc.settings.verbosity = 3
 plt.rcParams['figure.figsize'] = (7,7)
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = 'Arial'
+
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#104e8b", "#ffdab9", "#8b0a50"])
 
 m01 = sc.read_10x_h5("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/01.Cell-Ranger/01month_filtered_feature_bc_matrix.h5")
@@ -89,12 +94,14 @@ del adata_pp
 integrated.obs['size_factors'] = size_factors
 
 integrated.X /= integrated.obs['size_factors'].values[:, None]
+integrated.layers['scran'] = integrated.X # For cellphoneDB
 sc.pp.log1p(integrated) # works on anndata.X
 integrated.X = scipy.sparse.csr_matrix(integrated.X)
 integrated.raw = integrated ## ==> log transforamtion 된 것이 raw로 들어가게 됨.
 
 test3 = integrated.copy()
 test3.raw = test3
+test3.layers['scran_log1p'] = test3.X
 
 sc.pp.highly_variable_genes(test3)
 test3.var['highly_variable'].value_counts() # 2,410 ==> 2021-08-10 # 2,513 ==>
@@ -116,7 +123,8 @@ matplotlib.use('TkAgg')
 #sce.pp.bbknn default ==> n_pcs=50, neighbors_within_batch=3, trim=None, annoy_n_trees=10,
 sce.pp.bbknn(test3, batch_key='batch', n_pcs=20, neighbors_within_batch=5, trim=None) #####
 sc.tl.umap(test3, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamma=1.0, init_pos='spectral', method='umap')
-test3.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
+#test3.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
+test3.uns['batch_colors'] = ['#689aff', '#fdbf6f', '#b15928']
 #sc.pl.umap(test3, color=['batch'], add_outline=False, legend_loc='right margin', size=20, color_map='CMRmap')
 
 sc.tl.leiden(test3, resolution=0.5, key_added='leiden_r05') #### 0 ~ 13 ==> 2021-09-28
@@ -160,8 +168,8 @@ celltype_marker = {'EC': ['Pecam1', 'Cdh5', 'Vwf', 'Nos3'],
 'B cells': ['Ighm', 'Cd19'],
 'MΦ':['Cd14', 'Cd68'],
 'T cells':['Cd3d', 'Cd3g']}
-#reordered = ('Endothelial cells', 'Smooth muscle cells', 'Fibroblasts', 'B cells', 'MΦ', 'T cells')
-reordered = ('Endothelial cells', 'Smooth muscle cells', 'Fibroblasts', 'B cells', 'Macrophages', 'T cells')
+reordered = ('Endothelial cells', 'Smooth muscle cells', 'Fibroblasts', 'B cells', 'M\u03A6', 'T cells')
+#reordered = ('Endothelial cells', 'Smooth muscle cells', 'Fibroblasts', 'B cells', 'Macrophages', 'T cells')
 test3.obs['celltype'] = test3.obs['celltype'].cat.reorder_categories(list(reordered), ordered=True)
 
 sc.pl.umap(test3, color=['celltype'], add_outline=False, legend_loc='right margin', size=30, color_map='CMRmap', palette='Paired')
@@ -226,10 +234,13 @@ test3_endo.obs['size_factors'] = size_factors
 
 test3_endo.X /= test3_endo.obs['size_factors'].values[:, None]
 test3_endo.X = scipy.sparse.csr_matrix(test3_endo.X) #왜 이게 새로 들어가야될까????? # 아니면 ERRROR 남 (highly_variable_genes에서)
-test3_endo.X
+
+test3_endo.layers['scran'] = test3_endo.X
 
 sc.pp.log1p(test3_endo) # works on anndata.X
 #integrated.X = scipy.sparse.csr_matrix(integrated.X)
+test3_endo.layers['scran_log1p'] = test3_endo.X
+
 test3_endo.raw = test3_endo ## ==> log transforamtion 된 것이 raw로 들어가게 됨.
 
 sc.pp.highly_variable_genes(test3_endo)
@@ -245,7 +256,7 @@ sc.tl.pca(test3_endo, n_comps=100, use_highly_variable=True, svd_solver='arpack'
 #sce.pp.bbknn default ==> n_pcs=50, neighbors_within_batch=3, trim=None, annoy_n_trees=10,
 sce.pp.bbknn(test3_endo, batch_key='batch', n_pcs=20, neighbors_within_batch=5, trim=None) #####
 sc.tl.umap(test3_endo, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamma=1.0, init_pos='spectral', method='umap')
-test3_endo.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
+#test3_endo.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
 sc.tl.leiden(test3_endo, resolution=0.5, key_added='endo_leiden_r05')
 sc.tl.leiden(test3_endo, resolution=1.0, key_added='endo_leiden_r10')
 
@@ -313,7 +324,7 @@ sc.pl.rank_genes_groups_heatmap(test3_endo, n_genes=10, groups=['m01_0', 'm10_0'
 
 sc.tl.rank_genes_groups(test3_endo, 'batch', method='wilcoxon', pts=True, key_added='rank_genes_groups_batch')
 sc.pl.rank_genes_groups_heatmap(test3_endo, n_genes=15, key='rank_genes_groups_batch', show_gene_labels=True, min_logfoldchange=1)
- 
+
 
 # Diffusion pseudotime
 sc.tl.diffmap(test3_endo)
