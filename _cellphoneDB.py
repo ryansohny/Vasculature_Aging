@@ -102,4 +102,9 @@ integrated.X /= integrated.obs['size_factors'].values[:, None]
 #df_expr_matrix.columns = test3.obs.index
 #df_expr_matrix.set_index(test3.var.index, inplace=True)
 
+## Generate CellPhoneDB input files (counts)
 anndata.AnnData(X=integrated.X, obs=test3.obs, var=test3.var).write(filename="test3_CellPhoneDB.h5ad")
+## Generate CellPhoneDB input files (metadata)
+df_meta = pd.DataFrame(data={'Cell': list(test3.obs.index), 'cell_type': list(test3.obs['celltype'])}) # 나중에는 age 또는 fine clusters (leiden)도 집어넣어보자
+df_meta.set_index('Cell', inplace=True)
+df_meta.to_csv("test3_meta.txt", sep='\t')
