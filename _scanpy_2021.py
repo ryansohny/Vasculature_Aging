@@ -647,9 +647,13 @@ sc.tl.umap(test3_endo, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamm
 test3_endo.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
 sc.tl.leiden(test3_endo, resolution=0.5, key_added='endo_leiden_r05')
 test3_endo.uns['batch_colors'] = ['#689aff', '#fdbf6f', '#b15928']
+
+import magic
 test3_endo_MAGIC = test3_endo.copy()
 test3_endo_MAGIC.X = test3_endo_MAGIC.layers['scran_log1p']
 test3_endo_MAGIC = magic.MAGIC().fit_transform(test3_endo_MAGIC)
+test3_endo.layers['magic'] = test3_endo_MAGIC.X
+del test3_endo_MAGIC
 
 
 test3_endo = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
