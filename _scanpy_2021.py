@@ -740,5 +740,5 @@ test3_endo.obs['aging_endo_leiden_r05'] = test3_endo.obs['aging_endo_leiden_r05'
 
 tipcell_markers = ['Kdr', 'Flt4', 'Nrp1', 'Nrp2', 'Pdgfb', 'Dll4', 'Angpt2', 'Apln', 'Unc5b', 'Robo4', 'Plxnd1', 'Efnb2', 'Cxcr4']
 sc.tl.score_genes(test3_endo, tipcell_markers, score_name='tipcell_score', use_raw=True)
-
+sc.pl.umap(test3_endo, layer='magic', color=tipcell_markers, color_map=cmap, ncols=3)
 
