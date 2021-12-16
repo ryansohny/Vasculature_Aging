@@ -733,6 +733,12 @@ a = list(test3_endo.obs['batch'].values)
 b = list(test3_endo.obs['endo_leiden_r05'].values)
 c = list(map(lambda x: a[x] + '_' + b[x], list(range(len(a)))))
 test3_endo.obs['aging_endo_leiden_r05'] = c
+lin = ('m01_0', 'm10_0', 'm20_0', 'm01_1', 'm10_1', 'm20_1', 'm01_2', 'm10_2', 'm20_2', 'm01_3', 'm10_3', 'm20_3', 'm01_4', 'm10_4', 'm20_4', 'm01_5', 'm10_5', 'm20_5')
+#lin = ('m01_0', 'm01_1', 'm01_2', 'm01_3', 'm01_4','m01_5', 'm10_0', 'm10_1', 'm10_2', 'm10_3', 'm10_4','m10_5', 'm20_0', 'm20_1', 'm20_2', 'm20_3', 'm20_4','m20_5')
+test3_endo.obs['aging_endo_leiden_r05']
+test3_endo.obs['aging_endo_leiden_r05'] = test3_endo.obs['aging_endo_leiden_r05'].astype('category').cat.reorder_categories(list(lin), ordered=True)
 
+tipcell_markers = ['Kdr', 'Flt4', 'Nrp1', 'Nrp2', 'Pdgfb', 'Dll4', 'Angpt2', 'Apln', 'Unc5b', 'Robo4', 'Plxnd1', 'Efnb2', 'Cxcr4']
+sc.tl.score_genes(test3_endo, tipcell_markers, score_name='tipcell_score', use_raw=True)
 
 
