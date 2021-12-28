@@ -193,6 +193,16 @@ leiden_to_celltype2_dict = {'0': 'VSMC_1',
 test3.obs['celltype2'] = test3.obs['leiden_r05'].map(lambda x: leiden_to_celltype2_dict[x]).astype('category')
 sc.pl.umap(test3, color=['celltype2'], add_outline=False, legend_loc='on data', size=30, color_map=cmap, palette='tab20')
 
+colormap = dict()
+c = 0
+for i in leiden_to_celltype2_dict.values():
+    colormap[i] = test3.uns['celltype2_colors'][c]
+    c += 1
+
+df = pd.concat([test3.obs['batch'], test3.obs['celltype2']], axis=1)
+ax = pd.crosstab(df['batch'], df['celltype2'], normalize=0).plot.bar(stacked=True, color=colormap)
+ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1.0))
+plt.tight_layout()
 
 # Imputed expression matrix using MAGIC
 import magic
