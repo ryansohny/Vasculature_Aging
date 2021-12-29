@@ -20,13 +20,24 @@ import scanpy.external as sce
 #import scrublet as scr
 
 sc.settings.verbosity = 3
-plt.rcParams['figure.figsize'] = (7,7)
+plt.rcParams['figure.figsize'] = (5,5)
 #plt.rcParams['font.family'] = 'sans-serif'
 #plt.rcParams['font.sans-serif'] = 'Arial'
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#104e8b", "#ffdab9", "#8b0a50"])
+%matplotlib
 
 test3 = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3.h5ad")
 test3_endo = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
+
+def umap_all(LIST):
+if type(LIST) == list:sc.pl.umap(test3, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+elif type(LIST) == str:sc.pl.umap(test3, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+
+
+def umap_endo(LIST):
+if type(LIST) == list:sc.pl.umap(test3_endo, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+elif type(LIST) == str:sc.pl.umap(test3_endo, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+
 
 m01 = sc.read_10x_h5("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/01.Cell-Ranger/01month_filtered_feature_bc_matrix.h5")
 m01.var_names_make_unique()
