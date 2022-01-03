@@ -886,7 +886,7 @@ scv.pl.scatter(test3, color='batch', groups=[['m01'], ['m10'], ['m20']], ncols=3
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 fuck = sc.get.obs_df(test3_endo, keys=['Cdkn1a', 'batch'], obsm_keys=(), layer=None, use_raw=True)
-fuck_lm = ols('Cdkn1a ~ C(batch)', data=fuck).fit()
+fuck_lm = ols('Cdkn1a ~ C(batch)', data=fuck).fit() # C() ==> categorical data (not necessary here because batch is already categorical)
 print(sm.stats.anova_lm(fuck_lm, typ=2))
 
 #### Table generation 2021-09-16
