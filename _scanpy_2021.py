@@ -851,6 +851,44 @@ for gene in test3.var_names:
     sc.pl.umap(test3, layer='magic', color=gene, color_map=cmap, legend_loc='on data', add_outline=True, outline_width=(0.01, 0.01), show=False, save='_' + gene + '_test3_magic.png')
 
 
+senescence = ['Il6', 'Il1a', 'Il1b', 'Timp1', 'Mmp3', 'Mmp12', 'Cxcl1', 'Cxcl2', 'Ccl8', 'Cdkn1a', 'Cdkn2a']
+sc.tl.score_genes(test3_endo, senescence, score_name='senescence_score')
+
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m01'], kde=True, stat='probability', bins=100, color='#689aff', element='bars')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m10'], kde=True, stat='probability', bins=100, color='#fdbf6f', element='bars')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m20'], kde=True, stat='probability', bins=100, color='#b15928', element='bars')
+
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m01'], kde=True, stat='count', bins=100, color='#689aff', element='bars')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m10'], kde=True, stat='count', bins=100, color='#fdbf6f', element='bars')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m20'], kde=True, stat='count', bins=100, color='#b15928', element='bars')
+
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m01'], kde=True, stat='density', bins=50, color='#689aff', element='step')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m10'], kde=True, stat='density', bins=50, color='#fdbf6f', element='step')
+sb.histplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m20'], kde=True, stat='density', bins=50, color='#b15928', element='step')
+
+sb.kdeplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m01'], color='#689aff', fill=True, cumulative=True)
+sb.kdeplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m10'], color='#fdbf6f', fill=True, cumulative=True)
+sb.kdeplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m20'], color='#b15928', fill=True, cumulative=True)
+
+test3_endokey = test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['0', '1', '2', '3'])]
+
+sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m01'], color='#689aff', fill=True)
+sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m10'], color='#fdbf6f', fill=True)
+sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m20'], color='#b15928', fill=True)
+
+
+#### Plotting using scvelo
+scv.set_figure_params(style='scvelo', figsize=[5.5,5], frameon=True, color_map=cmap)
+scv.pl.scatter(test3_endo, color='batch', groups=[['m01'], ['m10'], ['m20']], ncols=3)
+scv.pl.scatter(test3, color='batch', groups=[['m01'], ['m10'], ['m20']], ncols=3)
+
+### ANOVA
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+fuck = sc.get.obs_df(test3_endo, keys=['Cdkn1a', 'batch'], obsm_keys=(), layer=None, use_raw=True)
+fuck_lm = ols('Cdkn1a ~ batch', data=fuck).fit()
+print(sm.stats.anova_lm(fuck_lm, tpy=2))
+
 #### Table generation 2021-09-16
 
 a = list(test3_endo.obs['batch'].values)
