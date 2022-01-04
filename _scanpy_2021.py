@@ -120,7 +120,7 @@ sc.pp.highly_variable_genes(test3)
 test3.var['highly_variable'].value_counts() # 2,410 ==> 2021-08-10 # 2,513 ==>
 
 sc.pp.scale(test3, max_value=10) # tabula muris senis default (2021-08-10) # mean and std on adata.var
-
+#sc.pp.scale(test3, zero_center=True, max_value=10, copy=False, layer=None, obsm=None)
 cell_cycle_genes=[x.strip()[0] + x.strip()[1:].lower() for x in open("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/Database/regev_lab_cell_cycle_genes.txt")]
 s_genes= cell_cycle_genes[:43]
 g2m_genes= cell_cycle_genes[43:]
