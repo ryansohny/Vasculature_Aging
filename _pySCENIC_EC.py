@@ -217,3 +217,8 @@ rss_endo_leiden_r05 = regulon_specificity_scores(auc_mtx, cellAnnot['endo_leiden
 
 rss_endo_leiden_r05.T['1'].sort_values(ascending=False).index[:20]
 test3_endo.var[test3_endo.var['Regulon(Tbx3(+))']].index
+
+# 아래처럼 Kdm4a regulon은 '1'에 높이 나타나는데 (RSS: 0.5260626882997943) 실제 plot에 expression을 놓고 보면 그렇지 않아 보임. 이것은 test3_endo의 raw counts를 가지고 했기 때문일까?
+# 즉, size_factor normalization을 하고 난 뒤의 count를 pySCENIC input으로 집어넣어야할까?
+test3_endo.var[test3_endo.var['Regulon(Kdm4a(+))']].index
+sc.pl.umap(test3_endo, color=['Kdm4a', 'Tgfb2'], layer='magic', color_map=cmap)
