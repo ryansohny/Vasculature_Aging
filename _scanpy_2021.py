@@ -15,28 +15,39 @@ import matplotlib.colors
 matplotlib.use('TkAgg')
 import numpy as np
 import seaborn as sb
+import seaborn as sns
 import math
 import scanpy.external as sce
-#import scrublet as scr
+import scrublet as scr
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from scipy.stats import chi2_contingency
+from scipy.stats import fisher_exact
+from statsmodels.stats.multitest import multipletests
 
 sc.settings.verbosity = 3
-plt.rcParams['figure.figsize'] = (5,5)
+plt.rcParams['figure.figsize'] = (6,6)
 #plt.rcParams['font.family'] = 'sans-serif'
 #plt.rcParams['font.sans-serif'] = 'Arial'
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#104e8b", "#ffdab9", "#8b0a50"])
+batch_palette=['#689aff', '#fdbf6f', '#b15928']
 %matplotlib
+%autoindent
 
 test3 = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3.h5ad")
 test3_endo = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
 
 def umap_all(LIST):
-if type(LIST) == list:sc.pl.umap(test3, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
-elif type(LIST) == str:sc.pl.umap(test3, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+    if type(LIST) == list:sc.pl.umap(test3, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+    elif type(LIST) == str:sc.pl.umap(test3, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
 
 
 def umap_endo(LIST):
-if type(LIST) == list:sc.pl.umap(test3_endo, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
-elif type(LIST) == str:sc.pl.umap(test3_endo, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+    if type(LIST) == list:sc.pl.umap(test3_endo, layer='magic', color=LIST, add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+    elif type(LIST) == str:sc.pl.umap(test3_endo, layer='magic', color=LIST.split(), add_outline=False, legend_loc='right margin', color_map=cmap, ncols=4)
+
+
 
 
 m01 = sc.read_10x_h5("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/01.Cell-Ranger/01month_filtered_feature_bc_matrix.h5")
@@ -53,6 +64,14 @@ m01.obs['percent_mito'] = np.ravel(np.sum(m01[:, mito_genes].X, axis=1)) / np.ra
 m10.obs['percent_mito'] = np.ravel(np.sum(m10[:, mito_genes].X, axis=1)) / np.ravel(np.sum(m10.X, axis=1))
 m20.obs['percent_mito'] = np.ravel(np.sum(m20[:, mito_genes].X, axis=1)) / np.ravel(np.sum(m20.X, axis=1))
 
+for sample in [m01, m10, m20]:
+    sce.pp.scrublet(sample, adata_sim=None, sim_doublet_ratio=2.0, expected_doublet_rate=0.08, stdev_doublet_rate=0.02, synthetic_doublet_umi_subsampling=1.0, knn_dist_metric='euclidean', n_prin_comps=30, verbose=True)
+
+sce.pl.scrublet_score_distribution(m01)
+
+integrated = AnnData.concatenate(m01, m10, m20, join='outer', batch_categories = ['m01', 'm10', 'm20'], index_unique = '-')
+integrated.obs['Doublet'] = integrated.obs['predicted_doublet'].astype(str).astype('category')
+
 sc.pp.filter_cells(m01, min_counts=2000)
 sc.pp.filter_cells(m01, min_genes=1500)
 
@@ -67,6 +86,8 @@ m10 = m10[m10.obs['percent_mito'] < 0.2]
 m20 = m20[m20.obs['percent_mito'] < 0.2]
 
 integrated = AnnData.concatenate(m01, m10, m20, join='outer', batch_categories = ['m01', 'm10', 'm20'], index_unique = '-')
+integrated.obs['Doublet'] = integrated.obs['predicted_doublet'].astype(str).astype('category')
+integrated.obs[['Doublet', 'batch']].value_counts()
 
 sc.pp.filter_genes(integrated, min_cells=5) # integrated.var에 n_cells 추가
 integrated.layers["counts"] = integrated.X.copy()
@@ -144,7 +165,7 @@ sc.tl.leiden(test3, resolution=0.5, key_added='leiden_r05') #### 0 ~ 13 ==> 2021
 sc.tl.leiden(test3, resolution=1.0, key_added='leiden_r10')
 sc.pl.umap(test3, color=['batch', 'leiden_r05', 'leiden_r10'], add_outline=False, legend_loc='right margin', size=20, color_map='CMRmap')
 
-sc.tl.rank_genes_groups(test3, 'leiden_r05', method='wilcoxon', pts=True) # key_added=''
+sc.tl.rank_genes_groups(test3, 'leiden_r05', method='wilcoxon', corr_method='benjamini-hochberg', use_raw=True, pts=True) # key_added=''
 sc.pl.rank_genes_groups(test3, n_genes=5, sharey=False)
 sc.pl.rank_genes_groups_heatmap(test3, n_genes=10, min_logfoldchange=2, cmap='cividis', show_gene_labels=True)
 
@@ -267,7 +288,7 @@ library(dplyr)
 
 test3_endo = anndata.AnnData(X=test3[test3.obs['leiden_r05'].isin(['5', '7'])].layers['counts'], obs=test3[test3.obs['leiden_r05'].isin(['5', '7'])].obs, var=test3[test3.obs['leiden_r05'].isin(['5', '7'])].var)
 test3_endo.layers["counts"] = test3_endo.X.copy()
-
+test3_endo = test3_endo[test3_endo.obs['Doublet'] == 'False']
 adata_pp = test3_endo.copy()
 sc.pp.normalize_per_cell(adata_pp, counts_per_cell_after=1e6)
 sc.pp.log1p(adata_pp)
@@ -307,6 +328,7 @@ sc.tl.pca(test3_endo, n_comps=100, use_highly_variable=True, svd_solver='arpack'
 
 #sce.pp.bbknn default ==> n_pcs=50, neighbors_within_batch=3, trim=None, annoy_n_trees=10,
 sce.pp.bbknn(test3_endo, batch_key='batch', n_pcs=20, neighbors_within_batch=5, trim=None) #####
+#sce.pp.bbknn(test3_endo, batch_key='batch', n_pcs=50, neighbors_within_batch=5, trim=None)
 sc.tl.umap(test3_endo, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamma=1.0, init_pos='spectral', method='umap')
 #test3_endo.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
 sc.tl.leiden(test3_endo, resolution=0.5, key_added='endo_leiden_r05')
@@ -871,11 +893,16 @@ sb.kdeplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m10'], c
 sb.kdeplot(test3_endo.obs['senescence_score'][test3_endo.obs['batch']=='m20'], color='#b15928', fill=True, cumulative=True)
 
 test3_endokey = test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['0', '1', '2', '3'])]
+test3_endokey = test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['1', '3'])]
 
 sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m01'], color='#689aff', fill=True)
 sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m10'], color='#fdbf6f', fill=True)
 sb.kdeplot(test3_endokey.obs['senescence_score'][test3_endo.obs['batch']=='m20'], color='#b15928', fill=True)
 
+
+dbf = open("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/REACTOME_SASP_genes_mm.txt", 'r')
+sasp_reactome = list(map(lambda x: x.strip('\n'), dbf.readlines()))
+sc.tl.score_genes(test3_endo, sasp_reactome, score_name='senescence_score')
 
 #### Plotting using scvelo
 scv.set_figure_params(style='scvelo', figsize=[5.5,5], frameon=True, color_map=cmap)
@@ -888,6 +915,101 @@ from statsmodels.formula.api import ols
 fuck = sc.get.obs_df(test3_endo, keys=['Cdkn1a', 'batch'], obsm_keys=(), layer=None, use_raw=True)
 fuck_lm = ols('Cdkn1a ~ C(batch)', data=fuck).fit() # C() ==> categorical data (not necessary here because batch is already categorical)
 print(sm.stats.anova_lm(fuck_lm, typ=2))
+
+### Chi-squared test
+from scipy.stats import chi2_contingency
+df = pd.concat([test3.obs['batch'], test3.obs['celltype2']], axis=1)
+df_pivot = pd.crosstab(df['batch'], df['celltype2'], normalize=False, margins=True)
+chi2_contingency(np.array(list(map(lambda x: [df_pivot['VSMC_1'][x], df_pivot['All'][x] - df_pivot['VSMC_1'][x]], ['m01','m10','m20']))) )
+
+from scipy.stats import chi2_contingency
+from scipy.stats import fisher_exact
+from statsmodels.stats.multitest import multipletests
+
+df = pd.concat([test3.obs['batch'], test3.obs['celltype2']], axis=1)
+df_pivot = pd.crosstab(df['batch'], df['celltype2'], normalize=False, margins=True)
+
+df_pivot = df_pivot[sorted('VSMC_1  VSMC_2  VSMC_3  FB_1  VSMC_4  EC_1  FB_2  EC_2  VSMC_5  FB_3  All'.split())]
+# Immune cell  제거안 했을 때는 밑의 df_pivot.columns를 [:-1] 바꿔줘야함
+
+Chi2s_df, Pvalues_df = list(), list()
+months = df_pivot.index[:-1] # ['m01', 'm10', 'm20']
+for month in months:
+    chi2s, pvalues = list(), list()
+    for celltype in df_pivot.columns[1:]:
+        chi2, p, dof, ex = chi2_contingency( np.array(list(map(lambda x: [df_pivot[celltype][x], df_pivot['All'][x] - df_pivot[celltype][x]], months))) )
+        chi2s.append(chi2)
+        pvalues.append(p)
+    Chi2s_df.append(chi2s)
+    multipletests(pvals=pvalues, alpha=0.01, method='fdr_bh')[1] # B-H correction
+    Pvalues_df.append(pvalues)
+
+Chi2s = pd.DataFrame(Chi2s_df, index=df_pivot.index[:-1], columns=df_pivot.columns[1:]).loc['m01'].rename('Chi2')
+Pvalues = - ( np.log(pd.DataFrame(Pvalues_df, index=df_pivot.index[:-1], columns=df_pivot.columns[1:]).loc['m01'].rename('-log10Padj')) / np.log(10) )
+
+df_final = pd.concat([Chi2s, Pvalues], axis=1)
+df_final
+################# EC subclusters ################# Chi-squared test
+df = pd.concat([test3_endo.obs['batch'], test3_endo.obs['endo_leiden_r05']], axis=1)
+df_pivot = pd.crosstab(df['batch'], df['endo_leiden_r05'], normalize=False, margins=True)
+
+Chi2s_df, Pvalues_df = list(), list()
+months = df_pivot.index[:-1] # ['m01', 'm10', 'm20']
+for month in months:
+
+    chi2s, pvalues = list(), list()
+
+    for celltype in df_pivot.columns[:-1]:
+        chi2, p, dof, ex = chi2_contingency( np.array(list(map(lambda x: [df_pivot[celltype][x], df_pivot['All'][x] - df_pivot[celltype][x]], months))) )
+        chi2s.append(chi2)
+        pvalues.append(p)
+
+    Chi2s_df.append(chi2s)
+    pvalues = multipletests(pvals=pvalues, alpha=0.01, method='fdr_bh')[1] # B-H correction
+    Pvalues_df.append(pvalues)
+
+Chi2s = pd.DataFrame(Chi2s_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1]).loc['m01'].rename('Chi2')
+Pvalues = - ( np.log(pd.DataFrame(Pvalues_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1]).loc['m01'].rename('-log10Padj')) / np.log(10) )
+
+df_final = pd.concat([Chi2s, Pvalues], axis=1)
+df_final
+
+### Odds ratio calculation (cell type enrichment) m01,m10,m20 간의 비교가 아니라 m01-rest, m10-rest, m20-rest 간의 비교
+
+oddsratio_df, pvalue_df = list(), list()
+for month in df_pivot.index[:-1]:
+    oddsratio, pvalues = list(), list()
+    for celltype in df_pivot.columns[:-1]:
+#        table = np.array([ [df_pivot[celltype][month], df_pivot[celltype]['All'] - df_pivot[celltype][month] ], [df_pivot['All'][month], df_pivot['All']['All'] - df_pivot['All'][month]] ])
+        table = np.array([ [df_pivot[celltype][month], df_pivot['All'][month] - df_pivot[celltype][month]], [df_pivot[celltype]['All'] - df_pivot[celltype][month], (df_pivot['All']['All'] - df_pivot['All'][month]) - (df_pivot[celltype]['All'] - df_pivot[celltype][month])] ])
+        oddsr, p = fisher_exact(table, alternative='two-sided')
+        oddsratio.append(oddsr)
+        pvalues.append(p)
+    oddsratio_df.append(oddsratio)
+    pvalues = multipletests(pvals=pvalues, alpha=0.01, method='fdr_bh')[1]
+    pvalue_df.append(pvalues)
+
+Odds = pd.DataFrame(oddsratio_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1])
+Pvalues = pd.DataFrame(pvalue_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1])
+
+df_final = pd.concat([Odds, Pvalues], axis=0)
+df_final
+
+df_final.iloc[:3].T.plot.bar(color=batch_palette)
+
+Odds.T.iloc[:-4,:].plot.bar(color=batch_palette)
+Odds.T.iloc.plot.bar(color=batch_palette) # ALL
+
+
+
+#celltype2              VSMC_1              VSMC_2              VSMC_3                FB_1  ...            B-lympho               MΦ             T-lmpho    #        Neuronal
+#oddsratio  0.5961995451094636  1.3527062235318188  0.9149824472209976  0.8098978964599354  ...  15.737582161577503  1.8023622383825  2.1760607433292347  #0.5508153756552125
+
+[1 rows x 14 columns]
+
+
+pd.DataFrame({'celltype2':df_pivot.columns[:-1], 'oddsratio':['0.5961995451094636', '1.3527062235318188', '0.9149824472209976', '0.8098978964599354', '0.9441401406198028', '0.6008021113167676', '1.0882776512945411', '1.2827207378272074', '0.33504584893869377', '2.731315912339897', '15.737582161577503', '1.8023622383825', '2.1760607433292347', '0.5508153756552125']}).set_index('celltype2').T
+
 
 #### Table generation 2021-09-16
 
