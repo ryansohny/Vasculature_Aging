@@ -64,8 +64,9 @@ m01.obs['percent_mito'] = np.ravel(np.sum(m01[:, mito_genes].X, axis=1)) / np.ra
 m10.obs['percent_mito'] = np.ravel(np.sum(m10[:, mito_genes].X, axis=1)) / np.ravel(np.sum(m10.X, axis=1))
 m20.obs['percent_mito'] = np.ravel(np.sum(m20[:, mito_genes].X, axis=1)) / np.ravel(np.sum(m20.X, axis=1))
 
+
 for sample in [m01, m10, m20]:
-    sce.pp.scrublet(sample, adata_sim=None, sim_doublet_ratio=2.0, expected_doublet_rate=0.08, stdev_doublet_rate=0.02, synthetic_doublet_umi_subsampling=1.0, knn_dist_metric='euclidean', n_prin_comps=30, verbose=True)
+    sce.pp.scrublet(sample, adata_sim=None, sim_doublet_ratio=2.0, expected_doublet_rate=0.05, stdev_doublet_rate=0.02, synthetic_doublet_umi_subsampling=1.0, knn_dist_metric='euclidean', n_prin_comps=30, verbose=True)
 
 sce.pl.scrublet_score_distribution(m01)
 
@@ -151,11 +152,11 @@ sc.tl.score_genes_cell_cycle(test3, s_genes=s_genes, g2m_genes=g2m_genes)
 sc.tl.pca(test3, n_comps=100, use_highly_variable=True, svd_solver='arpack')
 matplotlib.use('TkAgg')
 %matplotlib
-#sc.pl.pca_variance_ratio(test3, n_pcs=50, log=True)
+sc.pl.pca_variance_ratio(test3, n_pcs=100, log=False)
 #sc.pl.pca(test3, color=['batch'], legend_loc='right margin', size=8, add_outline=False, color_map='CMRmap', components=['1,2'])
 
 #sce.pp.bbknn default ==> n_pcs=50, neighbors_within_batch=3, trim=None, annoy_n_trees=10,
-sce.pp.bbknn(test3, batch_key='batch', n_pcs=20, neighbors_within_batch=5, trim=None) #####
+sce.pp.bbknn(test3, batch_key='batch', n_pcs=20, neighbors_within_batch=20, trim=None) #####
 sc.tl.umap(test3, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamma=1.0, init_pos='spectral', method='umap')
 #test3.uns['batch_colors'] = ['#2a2b2d', '#2da8d8', '#d9514e']
 test3.uns['batch_colors'] = ['#689aff', '#fdbf6f', '#b15928']
