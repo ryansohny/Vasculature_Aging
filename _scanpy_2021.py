@@ -1027,3 +1027,14 @@ tipcell_markers = ['Kdr', 'Flt4', 'Nrp1', 'Nrp2', 'Pdgfb', 'Dll4', 'Angpt2', 'Ap
 sc.tl.score_genes(test3_endo, tipcell_markers, score_name='tipcell_score', use_raw=True)
 
 
+		 
+
+		 
+		 
+# https://github.com/aertslab/pySCENIC/issues/357 이거랑 (Vascular Aging)
+# https://doi.org/10.1016/j.celrep.2018.10.045 이거 archiving 해놓을것!! (Vascular Aging)
+# https://github.com/aertslab/pySCENIC/issues/136 이것도 archiving ==> pySCENIC on bulk RNA-seq DATA!!!!!!!!!!!!!
+# https://github.com/aertslab/pySCENIC/issues/169 이것도 archiving ==> multiple pySCENIC RUN?????? (Vascular Aging)
+# https://github.com/aertslab/pySCENIC/find/master 여기에 .ipynb 들 
+# UMAP 에 대한 영상인데, UMAP 만든 사람이 좋다고 함 https://www.youtube.com/watch?v=6BPl81wGGP8
+# sc.pp.highly_variable_genes 의 batch_key 항목 꼭 check!!!
