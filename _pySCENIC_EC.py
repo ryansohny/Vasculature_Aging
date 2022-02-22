@@ -97,6 +97,12 @@ nohup pyscenic aucell \
 ## pySCENIC's AUC matrix retrieval
 # Environment (scanpy_1.8.1)
 import loompy as lp
+import pandas as pd
+import json
+import zlib
+import base64
+%autoindent
+
 lf = lp.connect("/mnt/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/pySCENIC/EC_new/test3_endo_pyscenic_output.loom", mode='r+', validate=False)
 lf.ca.keys()
 #['CellID', 'RegulonsAUC', 'nGene', 'nUMI']
@@ -113,7 +119,7 @@ meta = json.loads(zlib.decompress(base64.b64decode( lf.attrs.MetaData )))
 
 # Regulon의 이름들을 다음과 같이 바꿔주는 작업 010315B03Rik(+) ==> 2010315B03Rik_(+) ####
 auc_mtx.columns = auc_mtx.columns.str.replace('\(','_(') # columns: 2010315B03Rik(+) ==> 2010315B03Rik_(+)
-regulons.dtype.names = tuple([ x.replace("(","_(") for x in regulons.dtype.names])
+regulons.dtype.names = tuple([ x.replace("(","_(") for x in regulons.dtype.names]) # type( regulons.dtype.names ) == tuple
 rt = meta['regulonThresholds']
 for i,x in enumerate(rt):
     tmp = x.get('regulon').replace("(","_(")
@@ -196,6 +202,13 @@ import loompy as lp
 import json
 import zlib
 import scanpy.external as sce
+from pyscenic.rss import regulon_specificity_scores
+from pyscenic.plotting import plot_rss
+import matplotlib.pyplot as plt
+from adjustText import adjust_text
+import seaborn as sns
+from pyscenic.binarization import binarize
+import pandas as pd
 
 test3_endo = sc.read_h5ad("/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
 from pyscenic.cli.utils import load_signatures
