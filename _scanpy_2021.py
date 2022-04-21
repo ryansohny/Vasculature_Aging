@@ -25,9 +25,10 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import chi2_contingency
 from scipy.stats import fisher_exact
 from statsmodels.stats.multitest import multipletests
-
+sns.set(font="Arial", font_scale=1, style='ticks')
 sc.settings.verbosity = 3
 plt.rcParams['figure.figsize'] = (6,6)
+sns.set(font_scale=0.75, style='ticks')
 #plt.rcParams['font.family'] = 'sans-serif'
 #plt.rcParams['font.sans-serif'] = 'Arial'
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#104e8b", "#ffdab9", "#8b0a50"])
@@ -289,7 +290,13 @@ library(dplyr)
 
 test3_endo = anndata.AnnData(X=test3[test3.obs['leiden_r05'].isin(['5', '7'])].layers['counts'], obs=test3[test3.obs['leiden_r05'].isin(['5', '7'])].obs, var=test3[test3.obs['leiden_r05'].isin(['5', '7'])].var)
 test3_endo.layers["counts"] = test3_endo.X.copy()
-test3_endo = test3_endo[test3_endo.obs['Doublet'] == 'False']
+
+# Doublet information
+test3_endo.obs['Doublet'] = integrated.obs['Doublet'].loc[test3_endo.obs.index]
+
+# Doublet removal
+#test3_endo = test3_endo[test3_endo.obs['Doublet'] == 'False']
+
 adata_pp = test3_endo.copy()
 sc.pp.normalize_per_cell(adata_pp, counts_per_cell_after=1e6)
 sc.pp.log1p(adata_pp)
@@ -318,7 +325,6 @@ test3_endo.layers['scran_log1p'] = test3_endo.X
 test3_endo.raw = test3_endo ## ==> log transforamtion 된 것이 raw로 들어가게 됨.
 
 sc.pp.highly_variable_genes(test3_endo)
-
 test3_endo.var['highly_variable'].value_counts() # 2,612 ==> 2021-08-20, # 2,941 ==> 2021-09-28
 
 sc.pp.filter_genes(test3_endo, min_cells=0) # integrated.var에 n_cells 추가 ==> test3에서 이루어졌던 n_cells UPDATE
@@ -370,8 +376,7 @@ sc.pl.rank_genes_groups_heatmap(test3_endo, n_genes=10, key='endo_leiden_r05_ran
 
 #### endo_leiden_r05의 4,5는 아래와 같이 정리 ####
 ec_others = {'Pericyte': ['Rgs5', 'Cspg4', 'Kcnj8', 'Des'], 'Lymphatic EC': ['Reln', 'Flt4'], 'Vasa Vasorum': ['Ackr1', 'Lrg1']}
-sc.pl.matrixplot(test3_endo, ec_others, layer='magic', groupby='endo_leiden_r05', dendrogram=False, cmap=cmap, standard_scale='var', colorbar_title='Scaled\nexpre
-ssion', return_fig=False, var_group_rotation=45)
+sc.pl.matrixplot(test3_endo, ec_others, layer='magic', groupby='endo_leiden_r05', dendrogram=False, cmap=cmap, standard_scale='var', colorbar_title='Scaled\nexpression', return_fig=False, var_group_rotation=45)
 
 
 
@@ -389,7 +394,7 @@ sc.pl.heatmap(test3_endo, var_names=vein_schupp, groupby='leiden_r05', cmap='coo
 
 
 a = list(test3_endo.obs['batch'].values)
-b = list(test3_endo.obs['leiden_r05'].values)
+b = list(test3_endo.obs['endo_leiden_r05'].values)
 c = list(map(lambda x: a[x] + '_' + b[x], list(range(len(a)))))
 test3_endo.obs['aging_leiden_r05'] = c
 sc.tl.rank_genes_groups(test3_endo, 'aging_leiden_r05', method='wilcoxon', pts=True, key_added='rank_genes_groups_batch_aging')
@@ -398,7 +403,7 @@ sc.tl.rank_genes_groups(test3_endo, 'aging_leiden_r05', method='wilcoxon', pts=T
 lin = ('m01_0', 'm10_0', 'm20_0', 'm01_1', 'm10_1', 'm20_1', 'm01_2', 'm10_2', 'm20_2', 'm01_3', 'm10_3', 'm20_3', 'm01_4', 'm10_4', 'm20_4', 'm01_5', 'm10_5', 'm20_5')
 #lin = ('m01_0', 'm01_1', 'm01_2', 'm01_3', 'm01_4','m01_5', 'm10_0', 'm10_1', 'm10_2', 'm10_3', 'm10_4','m10_5', 'm20_0', 'm20_1', 'm20_2', 'm20_3', 'm20_4','m20_5')
 test3_endo.obs['aging_leiden_r05']
-test3_endo.obs['aging_leiden_r05'] = test3_endo.obs['aging_leiden_r05'].cat.reorder_categories(list(lin), ordered=True)
+test3_endo.obs['aging_leiden_r05'] = test3_endo.obs['aging_leiden_r05'].astype('category').cat.reorder_categories(list(lin), ordered=True)
 
 sc.pl.rank_genes_groups_heatmap(test3_endo, n_genes=10, groups=['m01_0', 'm10_0', 'm20_0'], groupby='aging_leiden_r05', key='rank_genes_groups_batch_aging', show_gene_labels=True, min_logfoldchange=1, dendrogram=False, cmap='coolwarm')
 
@@ -950,8 +955,10 @@ Pvalues = - ( np.log(pd.DataFrame(Pvalues_df, index=df_pivot.index[:-1], columns
 
 df_final = pd.concat([Chi2s, Pvalues], axis=1)
 df_final
+
 ################# EC subclusters ################# Chi-squared test
 df = pd.concat([test3_endo.obs['batch'], test3_endo.obs['endo_leiden_r05']], axis=1)
+# same as : df = test3_endo.obs[['batch', 'endo_leiden_r05']]
 df_pivot = pd.crosstab(df['batch'], df['endo_leiden_r05'], normalize=False, margins=True)
 
 Chi2s_df, Pvalues_df = list(), list()
@@ -1027,14 +1034,188 @@ tipcell_markers = ['Kdr', 'Flt4', 'Nrp1', 'Nrp2', 'Pdgfb', 'Dll4', 'Angpt2', 'Ap
 sc.tl.score_genes(test3_endo, tipcell_markers, score_name='tipcell_score', use_raw=True)
 
 
-		 
 
-		 
-		 
-# https://github.com/aertslab/pySCENIC/issues/357 이거랑 (Vascular Aging)
-# https://doi.org/10.1016/j.celrep.2018.10.045 이거 archiving 해놓을것!! (Vascular Aging)
-# https://github.com/aertslab/pySCENIC/issues/136 이것도 archiving ==> pySCENIC on bulk RNA-seq DATA!!!!!!!!!!!!!
-# https://github.com/aertslab/pySCENIC/issues/169 이것도 archiving ==> multiple pySCENIC RUN?????? (Vascular Aging)
-# https://github.com/aertslab/pySCENIC/find/master 여기에 .ipynb 들 
-# UMAP 에 대한 영상인데, UMAP 만든 사람이 좋다고 함 https://www.youtube.com/watch?v=6BPl81wGGP8
-# sc.pp.highly_variable_genes 의 batch_key 항목 꼭 check!!!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# '4', '5' 제거
+import rpy2.rinterface_lib.callbacks
+import logging
+from rpy2.robjects import pandas2ri
+import anndata2ri
+pandas2ri.activate()
+anndata2ri.activate()
+%load_ext rpy2.ipython
+%%R
+library(scran)
+library(dplyr)
+
+
+
+
+
+
+%config InlineBackend.figure_format = 'retina'
+
+test3_endo2 = anndata.AnnData(X=test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['0', '1', '2', '3'])].layers['counts'], obs=test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['0', '1', '2', '3'])].obs, var=test3_endo[test3_endo.obs['endo_leiden_r05'].isin(['0', '1', '2', '3'])].var)
+
+test3_endo2.layers["counts"] = test3_endo2.X.copy()
+
+# Doublet information
+#test3_endo.obs['Doublet'] = integrated.obs['Doublet'].loc[test3_endo.obs.index]
+
+# Doublet removal
+#test3_endo = test3_endo[test3_endo.obs['Doublet'] == 'False']
+
+adata_pp = test3_endo2.copy()
+sc.pp.normalize_per_cell(adata_pp, counts_per_cell_after=1e6)
+sc.pp.log1p(adata_pp)
+sc.tl.pca(adata_pp, n_comps=15) ## 여기서 이 n_component의 숫자를 늘리면 size_factors를 estimation하는 데 도움이 될까?
+sc.pp.neighbors(adata_pp)
+sc.tl.leiden(adata_pp, key_added='groups', resolution=0.5)
+input_groups = adata_pp.obs['groups']
+data_mat = test3_endo2.X.T
+%%R -i data_mat -i input_groups -o size_factors
+size_factors = BiocGenerics::sizeFactors(computeSumFactors(SingleCellExperiment::SingleCellExperiment(list(counts=data_mat)), clusters=input_groups, min.mean=0.1))
+
+
+
+del adata_pp
+test3_endo2.obs['size_factors'] = size_factors
+
+test3_endo2.X /= test3_endo2.obs['size_factors'].values[:, None]
+test3_endo2.X = scipy.sparse.csr_matrix(test3_endo2.X) #왜 이게 새로 들어가야될까????? # 아니면 ERRROR 남 (highly_variable_genes에서)
+
+test3_endo2.layers['scran'] = test3_endo2.X
+
+sc.pp.log1p(test3_endo2) # works on anndata.X
+#integrated.X = scipy.sparse.csr_matrix(integrated.X)
+test3_endo2.layers['scran_log1p'] = test3_endo2.X
+
+test3_endo2.raw = test3_endo2 ## ==> log transforamtion 된 것이 raw로 들어가게 됨.
+
+sc.pp.highly_variable_genes(test3_endo2)
+test3_endo2.var['highly_variable'].value_counts() # 2,897 ==> 2022-01-26
+
+sc.pp.filter_genes(test3_endo2, min_cells=0) # integrated.var에 n_cells 추가 ==> test3에서 이루어졌던 n_cells UPDATE
+
+sc.pp.scale(test3_endo2, max_value=10) # ... as `zero_center=True`, sparse input is densified and may lead to large memory consumption
+# adata.raw.X의 mean 과 std를 output함
+sc.tl.pca(test3_endo2, n_comps=100, use_highly_variable=True, svd_solver='arpack')
+
+#sce.pp.bbknn default ==> n_pcs=50, neighbors_within_batch=3, trim=None, annoy_n_trees=10,
+sce.pp.bbknn(test3_endo2, batch_key='batch', n_pcs=15, neighbors_within_batch=5, trim=None) #####
+#sce.pp.bbknn(test3_endo, batch_key='batch', n_pcs=50, neighbors_within_batch=5, trim=None)
+sc.tl.umap(test3_endo2, min_dist=0.5, spread=1.0, n_components=2, alpha=1.0, gamma=1.0, init_pos='spectral', method='umap')
+
+sc.tl.leiden(test3_endo2, resolution=0.5, key_added='endo_leiden2_r05')
+sc.tl.leiden(test3_endo2, resolution=1.0, key_added='endo_leiden2_r10')
+
+test3_endo2.uns['batch_colors'] = ['#689aff', '#fdbf6f', '#b15928']
+
+sc.pl.umap(test3_endo2, color=['endo_leiden2_r05', 'endo_leiden2_r10', 'endo_leiden_r05'], add_outline=False, legend_loc='right margin', size=150, color_map='CMRmap')
+sc.pl.umap(test3_endo2, color=['batch', 'phase', 'percent_mito'], add_outline=False, legend_loc='right margin', size=150, color_map='CMRmap')
+sc.pl.umap(test3_endo2, color=['batch'], group_by='Month1', add_outline=False, legend_loc='right margin', size=150, color_map='CMRmap')
+
+sc.tl.rank_genes_groups(test3_endo2, 'endo_leiden_r05', method='wilcoxon', pts=True, key_added='endo_leiden_r05_rank_genes_groups')
+#sc.pl.rank_genes_groups(test3_endo, n_genes=5, sharey=False)
+sc.pl.rank_genes_groups_heatmap(test3_endo2, n_genes=10, min_logfoldchange=2, cmap='cividis', show_gene_labels=True, key='endo_leiden_r05_rank_genes_groups')
+
+#test3_endo.write(filename="/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
+
+
+
+######################## EC endo_leiden_r05 이름 바꾸기 ########################
+endo_leiden_to_celltype_dict = {'0': 'EC_1',
+'1': 'EC_4',
+'2': 'EC_2',
+'3': 'EC_3',
+'4': 'EC_5',
+'5': 'EC_6'}
+test3_endo.obs['EC_subclusters'] = test3_endo.obs['endo_leiden_r05'].map(lambda x: endo_leiden_to_celltype_dict[x]).astype('category')
+
+
+reordered = ('EC_1', 'EC_2', 'EC_3', 'EC_4')
+test3_endo2.obs['EC_subclusters'] = test3_endo2.obs['EC_subclusters'].cat.reorder_categories(list(reordered), ordered=True)
+df = test3_endo2.obs[['EC_subclusters', 'phase']]
+ax = pd.crosstab(df['EC_subclusters'], df['phase'], normalize='index', margins=True).plot.bar(stacked=True)
+
+################# EC subclusters ################# Chi-squared test (w/o EC_5 and EC_6)
+df = test3_endo2.obs[['batch', 'EC_subclusters']]
+df_pivot = pd.crosstab(df['batch'], df['EC_subclusters'], normalize=False, margins=True)
+
+Chi2s_df, Pvalues_df = list(), list()
+months = df_pivot.index[:-1] # ['m01', 'm10', 'm20']
+for month in months:
+
+    chi2s, pvalues = list(), list()
+
+    for celltype in df_pivot.columns[:-1]:
+        chi2, p, dof, ex = chi2_contingency( np.array(list(map(lambda x: [df_pivot[celltype][x], df_pivot['All'][x] - df_pivot[celltype][x]], months))) )
+        chi2s.append(chi2)
+        pvalues.append(p)
+
+    Chi2s_df.append(chi2s)
+    pvalues = multipletests(pvals=pvalues, alpha=0.01, method='fdr_bh')[1] # B-H correction
+    Pvalues_df.append(pvalues)
+
+Chi2s = pd.DataFrame(Chi2s_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1]).loc['m01'].rename('Chi2')
+Pvalues = - ( np.log(pd.DataFrame(Pvalues_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1]).loc['m01'].rename('-log10Padj')) / np.log(10) )
+
+df_final = pd.concat([Chi2s, Pvalues], axis=1)
+df_final
+
+### Odds ratio calculation (cell type enrichment) m01,m10,m20 간의 비교가 아니라 m01-rest, m10-rest, m20-rest 간의 비교
+
+oddsratio_df, pvalue_df = list(), list()
+for month in df_pivot.index[:-1]:
+    oddsratio, pvalues = list(), list()
+    for celltype in df_pivot.columns[:-1]:
+#        table = np.array([ [df_pivot[celltype][month], df_pivot[celltype]['All'] - df_pivot[celltype][month] ], [df_pivot['All'][month], df_pivot['All']['All'] - df_pivot['All'][month]] ])
+        table = np.array([ [df_pivot[celltype][month], df_pivot['All'][month] - df_pivot[celltype][month]], [df_pivot[celltype]['All'] - df_pivot[celltype][month], (df_pivot['All']['All'] - df_pivot['All'][month]) - (df_pivot[celltype]['All'] - df_pivot[celltype][month])] ])
+        oddsr, p = fisher_exact(table, alternative='two-sided')
+        oddsratio.append(oddsr)
+        pvalues.append(p)
+    oddsratio_df.append(oddsratio)
+    pvalues = multipletests(pvals=pvalues, alpha=0.01, method='fdr_bh')[1]
+    pvalue_df.append(pvalues)
+
+Odds = pd.DataFrame(oddsratio_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1])
+Pvalues = pd.DataFrame(pvalue_df, index=df_pivot.index[:-1], columns=df_pivot.columns[:-1])
+
+df_final = pd.concat([Odds, Pvalues], axis=0)
+df_final
+
+df_final.iloc[:3].T.plot.bar(color=batch_palette)
+plt.tight_layout()
+
+Odds.T.iloc[:-4,:].plot.bar(color=batch_palette)
+Odds.T.iloc.plot.bar(color=batch_palette) # ALL
+
+############ MAST testing ############
+# Create new Anndata object for use in MAST (scran normalized and log transformed data)
+test3_endo_test = test3_endo.copy()
+test3_endo_test.X = test3_endo.layers['scran_log1p']
+test3_endo_test.obs['n_genes'] = (test3_endo_test.X > 0).sum(1)
+
+
+
+
+
+
+
+
