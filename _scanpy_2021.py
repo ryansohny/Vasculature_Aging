@@ -351,6 +351,8 @@ sc.tl.rank_genes_groups(test3_endo, 'endo_leiden_r05', method='wilcoxon', pts=Tr
 #sc.pl.rank_genes_groups(test3_endo, n_genes=5, sharey=False)
 sc.pl.rank_genes_groups_heatmap(test3_endo, n_genes=10, min_logfoldchange=2, cmap='cividis', show_gene_labels=True, key='endo_leiden_r05_rank_genes_groups')
 
+sc.pl.umap(test3_endo, color='endo_leiden_r05', palette='Set3')
+
 test3_endo.write(filename="/data/Projects/phenomata/01.Projects/11.Vascular_Aging/03.Scanpy/test3_endo.h5ad")
 
 markers = ["Pecam1", "Cdh5", "Nos3", "Acta2", "Cnn1", "Tagln", "Rgs5", "Kcnj8", "Col1a1", "Col5a1", "Dpt", "Cd19", "Ighm", "Cd14", "Cd68", "Cd3d"] # Cd3g 없음
